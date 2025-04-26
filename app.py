@@ -6,30 +6,15 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-def scan_barcode():
-    cap = cv2.VideoCapture(0)
-    detector = cv2.barcode_BarcodeDetector()
-    last_barcode = None
+# New route to serve the scanner page
+@app.route('/')
+def home():
+    return render_template('index.html')  # Sends index.html to the user's browser
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-
-        retval, decoded_info, points, _ = detector.detectAndDecodeMulti(frame)
-        if retval:
-            for barcode in decoded_info:
-                if barcode and barcode != last_barcode:
-                    cap.release()
-                    cv2.destroyAllWindows()
-                    return barcode
-        cv2.imshow('Barcode Scanner - Press Q to Quit', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-    return None
+# Keep your existing /scan API route
+@app.route('/scan', methods=['POST'])
+def scan():
+    barcode = request.json.get('barcode')
 
 def get_product_info(barcode):
     url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
@@ -64,15 +49,10 @@ def home():
 
 @app.route('/scan', methods=['POST'])
 def scan():
-    barcode = scan_barcode()
+    barcode = request.json.get('barcode')  # Expects {"barcode": "123456789"}
     if barcode:
         name, ingredients = get_product_info(barcode)
         if name:
             result = check_gluten(ingredients)
             return jsonify({"product": name, "status": result})
-        else:
-            return jsonify({"error": "Product not found"})
-    return jsonify({"error": "No barcode detected"})
-
-if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    return jsonify({"error": "No barcode provided"})

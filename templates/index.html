@@ -1,12 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Barcode Gluten Checker</title>
+    <title>Gluten Checker</title>
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
 </head>
 <body>
-  <h1>Barcode Scanner</h1>
-  <form method="POST" action="/scan">
-    <button type="submit">Scan Product</button>
-  </form>
+    <h1>Scan Barcode</h1>
+    <button id="startButton">Start Camera</button>
+    <video id="cameraFeed" width="100%" playsinline></video>
+    <div id="result"></div>
+
+    <script>
+        const codeReader = new ZXing.BrowserBarcodeScanner();
+        const startButton = document.getElementById('startButton');
+        const cameraFeed = document.getElementById('cameraFeed');
+        const resultDiv = document.getElementById('result');
+
+        startButton.addEventListener('click', () => {
+            codeReader.decodeFromVideoDevice(null, cameraFeed, (barcode) => {
+                if (barcode) {
+                    fetch('/scan', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ barcode: barcode.text })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        resultDiv.innerHTML = `
+                            <h2>${data.product || 'Unknown'}</h2>
+                            <p>Status: ${data.status || data.error}</p>
+                        `;
+                    });
+                }
+            });
+        });
+    </script>
 </body>
 </html>
