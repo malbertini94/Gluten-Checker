@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import cv2
 import numpy as np
 import requests
@@ -48,7 +49,7 @@ def check_gluten(ingredients):
 
     gluten_keywords = [
         'wheat', 'barley', 'rye', 'malt', 'gluten',
-        'blé', 'orge', 'seigle', 'grano', 'orzo',
+        'blï¿½', 'orge', 'seigle', 'grano', 'orzo',
         'segale', 'malto', 'glutine', 'weizen', 'gerste',
         'roggen', 'malz'
     ]
