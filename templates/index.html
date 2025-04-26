@@ -1,51 +1,75 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Gluten Checker</title>
-    <script src="https://unpkg.com/@zxing/library@latest"></script>
+  <title>Gluten Checker</title>
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
 </head>
 <body>
-    <h1>Scan Barcode</h1>
-    <button id="startButton">Start Camera</button>
-    <div id="result"></div>
+  <h1>Scan Barcode</h1>
+  <button id="startButton">Start Camera</button>
+  <video
+    id="cameraFeed"
+    width="100%"
+    height="auto"
+    playsinline
+    autoplay
+    muted
+    style="border: 1px solid #ccc; display: none;"
+  ></video>
+  <div id="result"></div>
 
-    <script>
-        const codeReader = new ZXing.BrowserBarcodeScanner();
-        const startButton = document.getElementById('startButton');
-        const resultDiv = document.getElementById('result');
+  <script>
+    const codeReader = new ZXing.BrowserBarcodeScanner();
+    const startButton = document.getElementById('startButton');
+    const cameraFeed  = document.getElementById('cameraFeed');
+    const resultDiv   = document.getElementById('result');
 
-        startButton.addEventListener('click', () => {
-            // Start camera feed when button is clicked
-            codeReader.getVideoInputDevices()
-                .then(videoInputDevices => {
-                    const selectedDeviceId = videoInputDevices[0].deviceId;
+    startButton.addEventListener('click', () => {
+      resultDiv.textContent = '';
+      // Show the video element on start
+      cameraFeed.style.display = 'block';
 
-                    // Start video feed from selected device
-                    codeReader.decodeFromVideoDevice(selectedDeviceId, null, (barcodeResult, err) => {
-                        if (barcodeResult) {
-                            fetch('/scan', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ barcode: barcodeResult.text })
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                resultDiv.innerHTML = `
-                                    <h2>${data.product || 'Unknown'}</h2>
-                                    <p>Status: ${data.status || data.error}</p>
-                                `;
-                            });
-                        } else if (err) {
-                            console.error(err);
-                            resultDiv.innerHTML = `<p>Error: ${err.message}</p>`;
-                        }
-                    });
+      codeReader.getVideoInputDevices()
+        .then(videoInputDevices => {
+          if (videoInputDevices.length === 0) {
+            throw new Error('No video devices found.');
+          }
+          const deviceId = videoInputDevices[0].deviceId;
+          console.log('Using camera deviceId =', deviceId);
+
+          codeReader.decodeFromVideoDevice(
+            deviceId,
+            cameraFeed,
+            (result, err) => {
+              if (result) {
+                console.log('Barcode decoded:', result.text);
+                // pause scanning once we have a result
+                codeReader.reset();
+                fetch('/scan', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ barcode: result.text })
                 })
-                .catch(err => {
-                    resultDiv.innerHTML = `<p>Couldn't access video devices. Please allow camera permissions.</p>`;
-                    console.error(err);
+                .then(r => r.json())
+                .then(data => {
+                  resultDiv.innerHTML = `
+                    <h2>${data.product || 'Unknown'}</h2>
+                    <p>Status: ${data.status || data.error}</p>
+                  `;
                 });
+              }
+              if (err && !(err instanceof ZXing.NotFoundException)) {
+                // only log non-“no barcode found in frame” errors
+                console.error(err);
+              }
+            }
+          );
+        })
+        .catch(err => {
+          console.error('getVideoInputDevices error:', err);
+          resultDiv.innerHTML = `<p style="color: red;">${err.message}</p>`;
         });
-    </script>
+    });
+  </script>
 </body>
 </html>
