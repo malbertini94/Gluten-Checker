@@ -7,32 +7,44 @@
 <body>
     <h1>Scan Barcode</h1>
     <button id="startButton">Start Camera</button>
-    <video id="cameraFeed" width="100%" playsinline></video>
     <div id="result"></div>
 
     <script>
         const codeReader = new ZXing.BrowserBarcodeScanner();
         const startButton = document.getElementById('startButton');
-        const cameraFeed = document.getElementById('cameraFeed');
         const resultDiv = document.getElementById('result');
 
         startButton.addEventListener('click', () => {
-            codeReader.decodeFromVideoDevice(null, cameraFeed, (barcode) => {
-                if (barcode) {
-                    fetch('/scan', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ barcode: barcode.text })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        resultDiv.innerHTML = `
-                            <h2>${data.product || 'Unknown'}</h2>
-                            <p>Status: ${data.status || data.error}</p>
-                        `;
+            // Start camera feed when button is clicked
+            codeReader.getVideoInputDevices()
+                .then(videoInputDevices => {
+                    const selectedDeviceId = videoInputDevices[0].deviceId;
+
+                    // Start video feed from selected device
+                    codeReader.decodeFromVideoDevice(selectedDeviceId, null, (barcodeResult, err) => {
+                        if (barcodeResult) {
+                            fetch('/scan', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ barcode: barcodeResult.text })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                resultDiv.innerHTML = `
+                                    <h2>${data.product || 'Unknown'}</h2>
+                                    <p>Status: ${data.status || data.error}</p>
+                                `;
+                            });
+                        } else if (err) {
+                            console.error(err);
+                            resultDiv.innerHTML = `<p>Error: ${err.message}</p>`;
+                        }
                     });
-                }
-            });
+                })
+                .catch(err => {
+                    resultDiv.innerHTML = `<p>Couldn't access video devices. Please allow camera permissions.</p>`;
+                    console.error(err);
+                });
         });
     </script>
 </body>
