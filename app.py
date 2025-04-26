@@ -6,16 +6,6 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# Route to serve the scanner page
-@app.route('/')
-def home():
-    return render_template('index.html')  # Sends index.html to the user's browser
-
-# Keep your existing /scan API route
-@app.route('/scan', methods=['POST'])
-def scan():
-    barcode = request.json.get('barcode')
-
 def get_product_info(barcode):
     url = f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
     response = requests.get(url)
@@ -42,6 +32,39 @@ def check_gluten(ingredients):
         return "Not Safe to Eat (Contains Gluten)"
     else:
         return "Safe to Eat (Gluten-Free)"
+
+@app.route('/')
+def home():
+    return render_template('upload.html')  # New HTML page for uploads
+
+@app.route('/scan', methods=['POST'])
+def scan():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"})
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "Empty filename"})
+    
+    # Read the uploaded image
+    img_bytes = file.read()
+    img = cv2.imdecode(np.frombuffer(img_bytes, np.uint8), cv2.IMREAD_COLOR)
+    
+    # Detect barcode
+    detector = cv2.barcode_BarcodeDetector()
+    retval, decoded_info, _, _ = detector.detectAndDecodeMulti(img)
+    
+    if retval and decoded_info[0]:
+        barcode = decoded_info[0]
+        name, ingredients = get_product_info(barcode)
+        if name:
+            return jsonify({
+                "product": name,
+                "status": check_gluten(ingredients),
+                "barcode": barcode
+            })
+    
+    return jsonify({"error": "No barcode detected"})
 
 if __name__ == '__main__':
     app.run(debug=True)

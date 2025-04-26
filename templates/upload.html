@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gluten Checker - Upload Image</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        #result { margin-top: 20px; padding: 10px; border: 1px solid #ddd; }
+    </style>
+</head>
+<body>
+    <h1>Upload Barcode Image</h1>
+    <form id="uploadForm">
+        <input type="file" id="fileInput" accept="image/*" capture="environment" required>
+        <button type="submit">Check Gluten</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const resultDiv = document.getElementById('result');
+            
+            if (!fileInput.files[0]) {
+                resultDiv.innerHTML = "Please select an image.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/scan', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultDiv.innerHTML = `Error: ${data.error}`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <h3>${data.product}</h3>
+                        <p><strong>Barcode:</strong> ${data.barcode}</p>
+                        <p><strong>Gluten Status:</strong> ${data.status}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = "Failed to process image.";
+            }
+        });
+    </script>
+</body>
+</html>
