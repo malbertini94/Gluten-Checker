@@ -6,7 +6,7 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# New route to serve the scanner page
+# Route to serve the scanner page
 @app.route('/')
 def home():
     return render_template('index.html')  # Sends index.html to the user's browser
@@ -43,16 +43,5 @@ def check_gluten(ingredients):
     else:
         return "Safe to Eat (Gluten-Free)"
 
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-@app.route('/scan', methods=['POST'])
-def scan():
-    barcode = request.json.get('barcode')  # Expects {"barcode": "123456789"}
-    if barcode:
-        name, ingredients = get_product_info(barcode)
-        if name:
-            result = check_gluten(ingredients)
-            return jsonify({"product": name, "status": result})
-    return jsonify({"error": "No barcode provided"})
+if __name__ == '__main__':
+    app.run(debug=True)
